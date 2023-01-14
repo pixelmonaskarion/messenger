@@ -1,0 +1,66 @@
+<input type="button" id="signin" name="signin" value="Sign In" , onclick="sign_in()">
+<input type="text" id="username" name="username" value="chrissy"><br>
+<input type="button" id="get-user" name="get-user" value="Get User" , onclick="get_user()">
+<input type="text" id="getUsername" name="getUsername" value="chrissy"><br>
+
+<script>
+    let token = undefined;
+    window.onbeforeunload = function () {
+        fetch("http://127.0.0.1:8000/logout/"+token, {
+            method: 'POST',
+        });
+    };
+
+    function sign_in() {
+        fetch("http://127.0.0.1:8000/login/" + document.getElementById("username").value).then((value) => {
+            value.json().then((json) => {
+                if ("token" in json) {
+                    token = json.token;
+                    let messageText = document.createElement("input");
+                    messageText.id = "messageText";
+                    messageText.type = "text";
+                    messageText.value = "Hello World!";
+                    let submitButton = document.createElement("input");
+                    submitButton.type = "button";
+                    submitButton.value = "Send";
+                    submitButton.id = "submitButton";
+                    submitButton.onclick = send_message;
+                    document.body.append(messageText);
+                    document.body.append(submitButton);
+                    start_events();
+                } else {
+                    console.log("couldn't log in:", json.server_message);
+                }
+            });
+        });
+    }
+    function start_events() {
+        fetch("http://127.0.0.1:8000/events/" + token).then(async res => {
+            const reader = res.body.pipeThrough(new TextDecoderStream()).getReader();
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) return;
+                console.log(value);
+            }
+        });
+    }
+    function send_message() {
+        let form = new FormData();
+        form.append("text", document.getElementById("messageText").value);
+        form.append("from_user", token);
+        form.append("to_users[0].username", "chrissy");
+        fetch("http://127.0.0.1:8000/post-message", {
+            method: 'POST',
+            body: form,
+        });
+    }
+
+    function get_user() {
+        let username = document.getElementById("getUsername").value;
+        fetch("http://127.0.0.1:8000/get-user/" + username).then((value) => {
+            value.json().then((json) => {
+                console.log(json);
+            })
+        });
+    }
+</script>

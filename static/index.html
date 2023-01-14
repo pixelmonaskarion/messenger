@@ -1,0 +1,14 @@
+<input type="number" id="number-input">
+<input type="text" id="name-input">
+<input type="checkbox" id="boolean-input">
+<button id="submit-button", onclick="submitClicked()">Submit</button>
+<script>
+    let number_input = document.getElementById("number-input");
+    let name_input = document.getElementById("name-input");
+    let boolean_input = document.getElementById("boolean-input");
+
+    function submitClicked() {
+        alert("http://127.0.0.1:8000/submit/?number="+number_input.value+"&name="+name_input.value+"&boolean="+boolean_input.value);
+        window.location.replace("http://127.0.0.1:8000/submit/?number="+number_input.value+"&name="+name_input.value+"&boolean="+boolean_input.value);
+    }
+</script>
