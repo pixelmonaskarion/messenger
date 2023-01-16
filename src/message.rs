@@ -2,7 +2,7 @@ use crate::{user::UserIdentifier, Server};
 use serde::Serialize;
 use rocket::serde::Deserialize;
 
-#[derive(Clone, Serialize)]
+#[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct Message {
     pub id: u32,
     pub text: String,
@@ -28,7 +28,7 @@ impl SendMessage {
     }
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Deserialize)]
 pub struct Chat {
     pub users: Vec<UserIdentifier>,
     pub name: String,

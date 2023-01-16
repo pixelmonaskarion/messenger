@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use serde::Serialize;
 use rocket::serde::Deserialize;
 
@@ -12,7 +14,23 @@ impl PartialEq for UserIdentifier {
     }
 }
 
-#[derive(Serialize)]
+pub fn uid_map_into<T>(input_map: HashMap<UserIdentifier, T>) -> HashMap<String, T> {
+    let mut output_map = HashMap::new();
+    for (uid, value) in input_map {
+        output_map.insert(uid.username, value);
+    }
+    return output_map;
+}
+
+pub fn username_map_into<T>(input_map: HashMap<String, T>) -> HashMap<UserIdentifier, T> {
+    let mut output_map = HashMap::new();
+    for (username, value) in input_map {
+        output_map.insert(UserIdentifier { username }, value);
+    }
+    return output_map;
+}
+
+#[derive(Serialize, Deserialize, Clone)]
 pub struct UserProfile {
     pub username: String,
     pub name: String,
