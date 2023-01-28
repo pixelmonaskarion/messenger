@@ -33,12 +33,14 @@ pub struct Chat {
     pub users: Vec<UserIdentifier>,
     pub name: String,
     pub id: u32,
+    pub admin: UserIdentifier,
 }
 
 #[derive(Deserialize)]
 pub struct CreateChat {
     pub users: Vec<UserIdentifier>,
     pub name: String,
+    pub admin: UserIdentifier,
 }
 
 impl CreateChat {
@@ -47,6 +49,14 @@ impl CreateChat {
             users: self.users.clone(),
             name: self.name.clone(),
             id,
+            admin: self.admin.clone(),
         }
     }
+}
+
+#[derive(Deserialize)]
+pub struct ChatEdit {
+    pub added_users: Vec<UserIdentifier>,
+    pub new_name: String,
+    pub new_admin: UserIdentifier,
 }

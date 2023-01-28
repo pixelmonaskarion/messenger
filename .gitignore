@@ -1,2 +1,8 @@
 /target
-/save
+/src/save
+/messenger-client-old
+src/save/tokens.json
+src/save/chats.json
+src/save/message_queue.json
+src/save/passwords.json
+src/save/users.json

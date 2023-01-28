@@ -246,6 +246,30 @@ fn create_user(token: u32, created_user: Json<CreateUser>, server_arc: &State<Ar
     );
 }
 
+#[post("/edit-chat/<chatid>/<token>", data = "<chat_edit>")]
+fn edit_chat(chatid: u32, token: u32, chat_edit: Json<ChatEdit>, server_arc: &State<Arc<Mutex<Server>>>) {
+    let server = server_arc.lock().unwrap();
+    if server.tokens.lock().unwrap().contains_key(&token) {
+        if server.chats.lock().unwrap().contains_key(&chatid) {
+            if *server.tokens.lock().unwrap().get(&token).unwrap() == server.chats.lock().unwrap().get(&chatid).unwrap().admin {
+                let mut chats_option = server.chats.lock();
+                let chats = chats_option.as_mut().unwrap();
+                let chat = chats.get_mut(&chatid).unwrap();
+                chat.admin = chat_edit.new_admin.clone();
+                chat.name = chat_edit.new_name.clone();
+                chat.users.append(&mut chat_edit.added_users.clone());
+                println!("updated chat name: {} admin: {:?}", chat.name, chat.admin);
+            } else {
+                println!("user not admin");
+            }
+        } else {
+            println!("invalid chat");
+        }
+    } else {
+        println!("invalid token");
+    }
+}
+
 #[get("/token-valid/<token>")]
 fn token_valid(token: u32, server_arc: &State<Arc<Mutex<Server>>>) -> String {
     let server = server_arc.lock().unwrap();
@@ -457,6 +481,7 @@ async fn main() {
                 all_options,
                 get_chat,
                 received_message,
+                edit_chat,
             ],
         )
         .launch()

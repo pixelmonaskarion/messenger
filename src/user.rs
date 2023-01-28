@@ -34,18 +34,21 @@ pub fn username_map_into<T>(input_map: HashMap<String, T>) -> HashMap<UserIdenti
 pub struct UserProfile {
     pub username: String,
     pub name: String,
+    pub color: String,
 }
 
 #[derive(Deserialize)]
 pub struct CreateUser {
     pub name: String,
+    pub color: String,
 }
 
 impl CreateUser {
     pub fn to_user_profile(&self, username: String) -> UserProfile {
         UserProfile {
-            username: username,
+            username,
             name: self.name.clone(),
+            color: self.color.clone(),
         }
     }
 }
