@@ -1,3 +1,4 @@
+
 use crate::{user::UserIdentifier, Server};
 use serde::Serialize;
 use rocket::serde::Deserialize;
@@ -8,6 +9,7 @@ pub struct Message {
     pub text: String,
     pub from_user: UserIdentifier,
     pub chat: u32,
+    pub timestamp: u128,
 }
 
 #[derive(Deserialize)]
@@ -15,6 +17,7 @@ pub struct SendMessage {
     pub text: String,
     pub from_user: u32,
     pub chat: u32,
+    pub timestamp: u128,
 }
 
 impl SendMessage {
@@ -24,6 +27,7 @@ impl SendMessage {
             text: self.text.clone(),
             from_user: server.tokens.lock().unwrap().get(&self.from_user).unwrap().clone(),
             chat: self.chat,
+            timestamp: self.timestamp,
         }
     }
 }
@@ -60,3 +64,4 @@ pub struct ChatEdit {
     pub new_name: String,
     pub new_admin: UserIdentifier,
 }
+
