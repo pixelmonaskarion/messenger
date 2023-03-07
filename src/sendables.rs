@@ -2,8 +2,6 @@ use std::{fmt, time::{SystemTime, UNIX_EPOCH}};
 use serde::Serialize;
 use rocket::serde::Deserialize;
 
-use crate::message::Message;
-
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Sendable {
     pub sendable_type: SendableType,
@@ -40,6 +38,7 @@ pub enum SendableType {
     Message,
     Read,
     Banner,
+    Reaction,
 }
 
 impl SendableType {
@@ -48,6 +47,7 @@ impl SendableType {
             SendableType::Message => "message".to_string(),
             SendableType::Read => "read".to_string(),
             SendableType::Banner => "banner".to_string(),
+            SendableType::Reaction => "reaction".to_string(),
         }
     }
 }
@@ -61,12 +61,22 @@ pub fn banner(text: String, chat: u32) -> Sendable {
     let sendable = Sendable::new(SendableType::Banner, format!("{{\"text\":\"{}\", \"chat\": {}}}", text, chat), Some(timestamp));
     sendable
 }
-pub fn read(status: String, username: String, message: &Message) -> Sendable {
+pub fn read(status: String, username: String, messageid: u32, chatid: u32) -> Sendable {
     let start = SystemTime::now();
     let since_the_epoch = start
         .duration_since(UNIX_EPOCH)
         .expect("Time went backwards");
     let timestamp = since_the_epoch.as_millis();
-    let sendable = Sendable::new(SendableType::Read, format!("{{\"status\":\"{}\", \"message\":{}, \"from\":\"{}\"}}", status, serde_json::ser::to_string(&message).expect("couldn't serialize message"), username), Some(timestamp));
+    let sendable = Sendable::new(SendableType::Read, format!("{{\"status\":\"{}\", \"message\":{{\"id\":{}, \"chat\":{}}}, \"from\":\"{}\"}}", status, messageid, chatid, username), Some(timestamp));
+    sendable
+}
+
+pub fn reaction(emoji: String, username: String, messageid: u32, chatid: u32) -> Sendable {
+    let start = SystemTime::now();
+    let since_the_epoch = start
+        .duration_since(UNIX_EPOCH)
+        .expect("Time went backwards");
+    let timestamp = since_the_epoch.as_millis();
+    let sendable = Sendable::new(SendableType::Reaction, format!("{{\"emoji\":\"{}\", \"message\":{}, \"from\":\"{}\", \"chat\":{}}}", emoji, messageid, username, chatid), Some(timestamp));
     sendable
 }

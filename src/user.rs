@@ -35,6 +35,7 @@ pub struct UserProfile {
     pub username: String,
     pub name: String,
     pub color: String,
+    pub pfp: String,
 }
 
 #[derive(Deserialize)]
@@ -44,11 +45,12 @@ pub struct CreateUser {
 }
 
 impl CreateUser {
-    pub fn to_user_profile(&self, username: String) -> UserProfile {
+    pub fn to_user_profile(&self, username: String, pfp: String) -> UserProfile {
         UserProfile {
             username,
             name: self.name.clone(),
             color: self.color.clone(),
+            pfp: pfp,
         }
     }
 }

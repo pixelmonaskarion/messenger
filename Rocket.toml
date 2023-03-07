@@ -1,5 +1,7 @@
 [global]
 address = "0.0.0.0"
+limits.form = "1Gb"
+limits.file = "1Gb"
 [global.shutdown]
 ctrlc = true
 force = false

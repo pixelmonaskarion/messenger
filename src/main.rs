@@ -1,8 +1,10 @@
 #[macro_use]
 extern crate rocket;
+use ::futures::executor::block_on;
 use rand::Rng;
 use rocket::fairing::{Fairing, Info, Kind};
-use rocket::fs::FileServer;
+use rocket::form::Form;
+use rocket::fs::{FileServer, TempFile};
 use rocket::http::ContentType;
 use rocket::http::Header;
 use rocket::response::stream::TextStream;
@@ -166,7 +168,6 @@ async fn events(token: u32, server_arc: &State<Arc<Mutex<Server>>>) -> TextStrea
             yield "{\"server_reponse\":\"invalid token\"}|".to_string();
         } else {
             for message in messages {
-                //let message_json = serde_json::to_string(&message).expect("Couldn't Serialize Message!");
                 yield format!("{}|", message.to_string());
             }
             let mut interval = time::interval(Duration::from_secs(1));
@@ -258,6 +259,7 @@ fn create_user(token: u32, created_user: Json<CreateUser>, server_arc: &State<Ar
     if !server.tokens.lock().unwrap().contains_key(&token) {
         return;
     }
+
     let username = server
         .tokens
         .lock()
@@ -266,7 +268,11 @@ fn create_user(token: u32, created_user: Json<CreateUser>, server_arc: &State<Ar
         .unwrap()
         .username
         .clone();
-    let user_profile = created_user.to_user_profile(username);
+    let mut pfp = "undefined".to_string();
+    if server.users.lock().unwrap().get(server.tokens.lock().unwrap().get(&token).unwrap()).is_some() {
+        pfp = server.users.lock().unwrap().get(server.tokens.lock().unwrap().get(&token).unwrap()).unwrap().pfp.clone();
+    }
+    let user_profile = created_user.to_user_profile(username, pfp);
     server.users.lock().unwrap().insert(
         server.tokens.lock().unwrap().get(&token).unwrap().clone(),
         user_profile,
@@ -285,32 +291,8 @@ fn edit_chat(chatid: u32, token: u32, chat_edit: Json<ChatEdit>, server_arc: &St
                 chat.admin = chat_edit.new_admin.clone();
                 chat.name = chat_edit.new_name.clone();
                 chat.users.append(&mut chat_edit.added_users.clone());
-                /*for user in &chat.users {
-                    println!("{}", user.username);
-                    let event_stream_senders = server.event_stream_senders.lock().unwrap();
-                    let senders_option = event_stream_senders.get(user);
-                    for new_user in chat_edit.added_users.clone() {
-                        let sendable = Sendablenew(SendableType::Banner, format!("{{\"text\":\"{} joined this chat\", \"chat\": {}}}", server.users.lock().unwrap().get(&new_user).unwrap_or(&UserProfile { username: new_user.username, name: "".to_string(), color: "".to_string() }).name, chat.id));
-                        server
-                            .sendable_queue
-                            .lock()
-                            .unwrap()
-                            .get_mut(user)
-                            .unwrap_or(&mut Vec::new())
-                            .push(sendable.clone());
-                        if senders_option.is_some() {
-                            for sender in senders_option.unwrap() {
-                                match sender.send(sendable.clone()) {
-                                    Ok(_) => {}
-                                    Err(e) => println!("{e}"),
-                                }
-                            }
-                        }
-                    }
-                }*/        
                 for new_user in chat_edit.added_users.clone() {                
-                    //let sendable = Sendable::(SendableType::Banner, format!("{{\"text\":\"{} joined this chat\", \"chat\": {}}}", server.users.lock().unwrap().get(&new_user).unwrap_or(&UserProfile { username: new_user.username, name: "".to_string(), color: "".to_string() }).name, chat.id));
-                    let name = server.users.lock().unwrap().get(&new_user).unwrap_or(&UserProfile { username: new_user.username, name: "".to_string(), color: "".to_string() }).name.clone();
+                    let name = server.users.lock().unwrap().get(&new_user).unwrap_or(&UserProfile { username: new_user.username, name: "".to_string(), color: "".to_string(), pfp:"".to_string() }).name.clone();
                     let sendable = banner(format!("{} joined this chat", name), chat.id);
                     send_sendable(sendable, &chat.users, &server);
                 }
@@ -446,32 +428,9 @@ fn join_chat_link(
                     .get(&chatid).unwrap()
                     .users.contains(server.tokens.lock().unwrap().get(&token).unwrap())
                 {
-                    //server.chat_join_ids.lock().unwrap().remove(&join_code);
                     server.chats.lock().unwrap().get_mut(&chatid).unwrap().users.push(server.tokens.lock().unwrap().get(&token).unwrap().clone());
-                    /*for user in &server.chats.lock().unwrap().get_mut(&chatid).unwrap().users {
-                        println!("sending to {}", user.username);
-                        let event_stream_senders = server.event_stream_senders.lock().unwrap();
-                        let senders_option = event_stream_senders.get(user);
-                        let uid = server.tokens.lock().unwrap().get(&token).unwrap().clone();
-                        let sendable = Sendablenew(SendableType::Banner, format!("{{\"text\":\"{} joined this chat\", \"chat\": {}}}", server.users.lock().unwrap().get(&uid).unwrap_or(&UserProfile { username: uid.username.clone(), name: uid.username.clone(), color: "".to_string() }).name, chatid));
-                        server
-                            .sendable_queue
-                            .lock()
-                            .unwrap()
-                            .get_mut(user)
-                            .unwrap_or(&mut Vec::new())
-                            .push(sendable.clone());
-                        if senders_option.is_some() {
-                            for sender in senders_option.unwrap() {
-                                match sender.send(sendable.clone()) {
-                                    Ok(_) => {}
-                                    Err(e) => println!("{e}"),
-                                }
-                            }
-                        }
-                    }*/
                     let uid = server.tokens.lock().unwrap().get(&token).unwrap().clone();
-                    let name = server.users.lock().unwrap().get(&uid).unwrap_or(&UserProfile { username: uid.username.clone(), name: "".to_string(), color: "".to_string() }).name.clone();
+                    let name = server.users.lock().unwrap().get(&uid).unwrap_or(&UserProfile { username: uid.username.clone(), name: "".to_string(), color: "".to_string(), pfp:"".to_string() }).name.clone();
                     let sendable = banner(format!("{} joined this chat", name), chatid);
                     println!("user {} joining chat {}", uid.username, server.chats.lock().unwrap().get_mut(&chatid).unwrap().name);
                     send_sendable(sendable, &server.chats.lock().unwrap().get_mut(&chatid).unwrap().users, &server);
@@ -484,65 +443,81 @@ fn join_chat_link(
 
 
 
-#[post("/received-message/<token>", data = "<message>")]
-fn received_message(token: u32, message: Json<Message>, server_arc: &State<Arc<Mutex<Server>>>) {
+#[post("/received-message/<token>/<chatid>/<messageid>/<to_user>")]
+fn received_message(token: u32, chatid: u32, messageid: u32, to_user: String, server_arc: &State<Arc<Mutex<Server>>>) {
     let server = server_arc.lock().unwrap();
     let tokens = server.tokens.lock().unwrap();
     let uid = tokens.get(&token);
     if uid.is_some() {
-        server.message_queue.lock().unwrap().get_mut(uid.unwrap()).unwrap().remove(&message.id);
-        let sender_uid = &message.from_user;
-        //let sendable = Sendablenew(SendableType::Read, format!("{{\"status\":\"Delivered\", \"message\":{}, \"from\":\"{}\"}}", serde_json::ser::to_string(&message.0).expect("couldn't serialize message"), uid.unwrap().username));
-        let sendable = read("Delivered".to_string(), uid.unwrap().username.clone(), &message.0);
-        /*
-        let senders_option = event_stream_senders.get(sender_uid);
-        let event_stream_senders = server.event_stream_senders.lock().unwrap();
-        server
-            .sendable_queue
-            .lock()
-            .unwrap()
-            .get_mut(sender_uid)
-            .unwrap_or(&mut Vec::new())
-            .push(sendable.clone());
-        if senders_option.is_some() {
-            for sender in senders_option.unwrap() {
-                match sender.send(sendable.clone()) {
-                    Ok(_) => {}
-                    Err(e) => println!("{e}"),
-                }
-            }
-        }*/
+        server.message_queue.lock().unwrap().get_mut(uid.unwrap()).unwrap().remove(&messageid);
+        let sender_uid = UserIdentifier { username: to_user };
+        let sendable = read("Delivered".to_string(), uid.unwrap().username.clone(), messageid, chatid);
         send_sendable(sendable, &[sender_uid.clone()].to_vec(), &server);
     }
 }
 
-#[post("/read-message/<token>", data = "<message>")]
-fn read_message(token: u32, message: Json<Message>, server_arc: &State<Arc<Mutex<Server>>>) {
+#[derive(FromForm)]
+struct PfpImage<'f> {
+    extension: String,
+    pfp_image: TempFile<'f>,
+}
+
+#[post("/change-pfp/<token>", format = "multipart/form-data", data = "<pfp_form>")]
+fn change_pfp(token: u32, mut pfp_form: Form<PfpImage>, server_arc: &State<Arc<Mutex<Server>>>) {
     let server = server_arc.lock().unwrap();
     let tokens = server.tokens.lock().unwrap();
     let uid = tokens.get(&token);
     if uid.is_some() {
-        let sender_uid = &message.from_user;
-        //let sendable = Sendablenew(SendableType::Read, format!("{{\"status\":\"Read\", \"message\":{}}}", serde_json::ser::to_string(&message.0).expect("couldn't serialize message")));
-        let sendable = read("Read".to_string(), uid.unwrap().username.clone(), &message.0);
-        /*let event_stream_senders = server.event_stream_senders.lock().unwrap();
-        let senders_option = event_stream_senders.get(sender_uid);
-        let sendable = Sendablenew(SendableType::Read, format!("{{\"status\":\"Read\", \"message\":{}}}", serde_json::ser::to_string(&message.0).expect("couldn't serialize message")));
-        server
-            .sendable_queue
-            .lock()
-            .unwrap()
-            .get_mut(sender_uid)
-            .unwrap_or(&mut Vec::new())
-            .push(sendable.clone());
-        if senders_option.is_some() {
-            for sender in senders_option.unwrap() {
-                match sender.send(sendable.clone()) {
-                    Ok(_) => {}
-                    Err(e) => println!("{e}"),
-                }
-            }
-        }*/
+        let username = uid.unwrap().username.clone();
+        let new_path = format!("F:\\chris\\rust\\messenger\\pfps\\{}.{}", username, pfp_form.extension);
+        block_on(save_pfp(&mut pfp_form.pfp_image, new_path));
+        let mut users = server.users.lock().unwrap();
+        let mut user = users.get_mut(uid.unwrap());
+        if user.is_some() {
+            let url = format!("https://minecraft.themagicdoor.org:8000/pfps/{}.{}", username, pfp_form.extension);
+            user.as_mut().unwrap().pfp = url;
+            println!("set {}'s pfp to {}", uid.unwrap().username, user.as_mut().unwrap().pfp);
+        }
+    }
+}
+
+#[post("/delete-pfp/<token>")]
+fn delete_pfp(token: u32, server_arc: &State<Arc<Mutex<Server>>>) {
+    let server = server_arc.lock().unwrap();
+    let tokens = server.tokens.lock().unwrap();
+    let uid = tokens.get(&token);
+    if uid.is_some() {
+        let mut users = server.users.lock().unwrap();
+        let user = users.get_mut(uid.unwrap());
+        if user.is_some() {
+            println!("deleting {}'s pfp", uid.unwrap().username);
+            user.unwrap().pfp = "undefined".to_string();
+        }
+    }
+}
+
+async fn save_pfp<'f>(pfp: &mut TempFile<'f>, new_path: String) {
+    println!("copying to {}", new_path);
+    match pfp.move_copy_to(new_path).await {
+        Ok(()) => {println!("saved pfp")},
+        Err(e) => {println!("error saving image {e}")}
+    };
+}
+
+#[get("/pfps/<pfp>")]
+fn get_pfp(pfp: String) -> Option<File> {
+    let filename = format!("F:\\chris\\rust\\messenger\\pfps\\{}", pfp);
+    File::open(&filename).ok()
+}
+
+#[post("/read-message/<token>/<chatid>/<messageid>/<to_user>")]
+fn read_message(token: u32, chatid: u32, messageid: u32, to_user: String, server_arc: &State<Arc<Mutex<Server>>>) {
+    let server = server_arc.lock().unwrap();
+    let tokens = server.tokens.lock().unwrap();
+    let uid = tokens.get(&token);
+    if uid.is_some() {
+        let sender_uid = UserIdentifier { username: to_user };
+        let sendable = read("Read".to_string(), uid.unwrap().username.clone(), messageid, chatid);
         send_sendable(sendable, &[sender_uid.clone()].to_vec(), &server);
     }
 }
@@ -568,32 +543,29 @@ fn post_message(sent_message: Json<SendMessage>, server_arc: &State<Arc<Mutex<Se
     let message_id = rng.gen::<u32>();
     let message = sent_message.to_message(message_id, &server);
     send_message(message, server);
-    /*
-    let chats = server.chats.lock().unwrap();
-    let chat = chats.get(&message.chat);
-    if chat.is_none() {
-        return "Invalid Chat".to_string();
+    "Thank you :)".to_string()
+}
+
+#[post("/react-message/<token>/<chatid>/<messageid>/<emoji>")]
+fn react_message(token: u32, chatid: u32, messageid: u32, emoji: String, server_arc: &State<Arc<Mutex<Server>>>) -> String {
+    let server = server_arc.lock().unwrap();
+    if !server
+        .tokens
+        .lock()
+        .unwrap()
+        .contains_key(&token)
+    {
+        return "Invalid Token >:(".to_string();
     }
-    for uid in &chat.unwrap().users {
-        let event_stream_senders = server.event_stream_senders.lock().unwrap();
-        let senders_option = event_stream_senders.get(&uid);
-        server
-            .message_queue
-            .lock()
-            .unwrap()
-            .get_mut(uid)
-            .unwrap_or(&mut HashMap::new())
-            .insert(message_id, Sendablenew(SendableType::Message, serde_json::ser::to_string(&message).expect("couldn't serialize message")));
-        if senders_option.is_some() {
-            for sender in senders_option.unwrap() {
-                match sender.send(Sendablenew(SendableType::Message, serde_json::ser::to_string(&message).expect("couldn't serialize message"))) {
-                    Ok(_) => {}
-                    Err(e) => println!("{e}"),
-                }
-            }
+    let user = server.tokens.lock().unwrap().get(&token).unwrap().clone();
+    if server.chats.lock().unwrap().contains_key(&chatid) {
+        let chats = server.chats.lock().unwrap();
+        let chat = chats.get(&chatid).unwrap();
+        if chat.users.contains(&user) {
+            let reaction = reaction(emoji, user.username, messageid, chatid);
+            send_sendable(reaction, &chat.users, &server);
         }
     }
-    */
     "Thank you :)".to_string()
 }
 
@@ -735,6 +707,10 @@ async fn main() {
                 read_message,
                 create_chat_link,
                 join_chat_link,
+                change_pfp,
+                get_pfp,
+                delete_pfp,
+                react_message,
             ],
         )
         .launch()
