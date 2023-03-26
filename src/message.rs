@@ -1,5 +1,6 @@
+use std::collections::HashMap;
 
-use crate::{user::UserIdentifier, Server};
+use crate::user::UserIdentifier;
 use serde::Serialize;
 use rocket::serde::Deserialize;
 
@@ -10,6 +11,8 @@ pub struct Message {
     pub from_user: UserIdentifier,
     pub chat: u32,
     pub timestamp: u128,
+    pub read: String,
+    pub reactions: HashMap<u32, String>,
 }
 
 #[derive(Deserialize)]
@@ -20,14 +23,21 @@ pub struct SendMessage {
     pub timestamp: u128,
 }
 
+#[derive(Deserialize)]
+pub struct EncryptedMessages {
+    pub encrypted_messages: HashMap<String, SendMessage>,
+}
+
 impl SendMessage {
-    pub fn to_message(&self, id: u32, server: &Server) -> Message {
+    pub fn to_message(&self, id: u32, from_user: UserIdentifier ) -> Message {
         Message {
             id,
             text: self.text.clone(),
-            from_user: server.tokens.lock().unwrap().get(&self.from_user).unwrap().clone(),
+            from_user,
             chat: self.chat,
             timestamp: self.timestamp,
+            read: "Sent".into(),
+            reactions: HashMap::new(),
         }
     }
 }
@@ -64,4 +74,3 @@ pub struct ChatEdit {
     pub new_name: String,
     pub new_admin: UserIdentifier,
 }
-

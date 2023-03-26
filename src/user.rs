@@ -36,12 +36,20 @@ pub struct UserProfile {
     pub name: String,
     pub color: String,
     pub pfp: String,
+    pub public_key: String,
+}
+
+impl UserProfile {
+    pub fn dummy(username: String) -> UserProfile {
+        UserProfile { username, name: "".to_string(), color: "".to_string(), pfp:"".to_string(), public_key:"".to_string() }
+    }
 }
 
 #[derive(Deserialize)]
 pub struct CreateUser {
     pub name: String,
     pub color: String,
+    pub public_key: String,
 }
 
 impl CreateUser {
@@ -51,6 +59,7 @@ impl CreateUser {
             name: self.name.clone(),
             color: self.color.clone(),
             pfp: pfp,
+            public_key: self.public_key.clone(),
         }
     }
 }

@@ -5,6 +5,6 @@ limits.file = "1Gb"
 [global.shutdown]
 ctrlc = true
 force = false
-[global.tls]
-certs = "C:/Certbot/live/minecraft.themagicdoor.org/fullchain.pem"
-key = "C:/Certbot/live/minecraft.themagicdoor.org/privkey.pem"
+#[global.tls]
+#certs = "C:/Certbot/live/minecraft.themagicdoor.org/fullchain.pem"
+#key = "C:/Certbot/live/minecraft.themagicdoor.org/privkey.pem"
