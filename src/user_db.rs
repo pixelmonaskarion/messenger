@@ -2,13 +2,11 @@ use std::{collections::HashMap, sync::{Mutex, Arc}};
 
 use rocket::{State, http::ContentType};
 use serde::{Deserialize, Serialize};
-use crate::Server;
-
-use crate::sendables::Sendable;
+use crate::{Server, message::Message};
 
 #[derive(Deserialize, Serialize, Clone)]
 pub struct UserDB {
-    pub messages: HashMap<u32, HashMap<u32, Sendable>>,
+    pub messages: HashMap<u32, HashMap<u32, Message>>,
 }
 
 impl UserDB {
@@ -29,7 +27,7 @@ pub fn get_message(token: u32, chat: u32, message: u32, server_arc: &State<Arc<M
         let udb = user_db.get(uid).unwrap();
         if udb.messages.contains_key(&chat) {
             if udb.messages.get(&chat).unwrap().contains_key(&message) {
-                return (ContentType::JSON, udb.messages.get(&chat).unwrap().get(&message).unwrap().to_string());
+                return (ContentType::JSON, serde_json::ser::to_string(&udb.messages.get(&chat).unwrap().get(&message).unwrap()).expect("couldn't serialize message"));
             } else {
                 return (ContentType::JSON, "{'server':'no message found'}".into());
             }
@@ -52,7 +50,7 @@ pub fn get_chat_messages(token: u32, chat: u32, server_arc: &State<Arc<Mutex<Ser
         if udb.messages.contains_key(&chat) {
             let mut data = "[".to_string();
             for (mid, message) in udb.messages.get(&chat).unwrap() {
-                data = format!("{}{}: '{}',", data, mid, message.to_string());
+                data = format!("{}{}: '{}',", data, mid, serde_json::ser::to_string(&message).expect("couldn't serialize message"));
             }
             data += "]";
             return (ContentType::JSON, data);

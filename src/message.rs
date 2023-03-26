@@ -12,7 +12,7 @@ pub struct Message {
     pub chat: u32,
     pub timestamp: u128,
     pub read: String,
-    pub reactions: HashMap<u32, String>,
+    pub reactions: HashMap<String, String>,
 }
 
 #[derive(Deserialize)]
@@ -28,18 +28,11 @@ pub struct EncryptedMessages {
     pub encrypted_messages: HashMap<String, SendMessage>,
 }
 
-#[derive(Deserialize)]
-pub struct EncryptedMessages {
-    pub encrypted_messages: HashMap<String, SendMessage>,
-}
-
 impl SendMessage {
-    pub fn to_message(&self, id: u32, from_user: UserIdentifier ) -> Message {
     pub fn to_message(&self, id: u32, from_user: UserIdentifier ) -> Message {
         Message {
             id,
             text: self.text.clone(),
-            from_user,
             from_user,
             chat: self.chat,
             timestamp: self.timestamp,

@@ -1,6 +1,6 @@
 use std::{sync::MutexGuard, collections::HashMap};
 
-use crate::{user::UserIdentifier, message::Message, Server, sendables::{Sendable, SendableType}};
+use crate::{user::UserIdentifier, message::Message, Server, sendables::{Sendable, SendableType}, user_db::UserDB};
 
 pub fn send_sendable(sendable: Sendable, users: &Vec<UserIdentifier>, server: &MutexGuard<Server>) {
     for user in users {
@@ -72,10 +72,13 @@ pub fn send_message(message: Message, to_user: UserIdentifier, server: MutexGuar
         .insert(message.id, sendable.clone());
     }
     let mut user_db = server.user_db.lock().unwrap();
+    if !user_db.contains_key(&to_user) {
+        user_db.insert(to_user.clone(), UserDB::new());
+    }
     let udb = user_db.get_mut(&to_user).unwrap();
     let messages = &mut udb.messages;
     if !messages.contains_key(&message.chat) {
         messages.insert(message.chat, HashMap::new());
     }
-    messages.get_mut(&message.chat).unwrap().insert(message.id, sendable.clone());
+    messages.get_mut(&message.chat).unwrap().insert(message.id, message);
 }

@@ -638,6 +638,17 @@ fn received_message(
             chatid,
         );
         send_sendable(sendable, &[sender_uid.clone()].to_vec(), &server);
+        let mut user_db = server.user_db.lock().unwrap();
+        if user_db.contains_key(&sender_uid) {
+            let udb = user_db.get_mut(&sender_uid).unwrap();
+            if udb.messages.contains_key(&chatid) {
+                let messages = udb.messages.get_mut(&chatid).unwrap();
+                if messages.contains_key(&messageid) {
+                    let message = messages.get_mut(&messageid).unwrap();
+                    message.read = "Delivered".into();
+                }
+            }
+        }
     }
 }
 
@@ -733,6 +744,17 @@ fn read_message(
             chatid,
         );
         send_sendable(sendable, &[sender_uid.clone()].to_vec(), &server);
+        let mut user_db = server.user_db.lock().unwrap();
+        if user_db.contains_key(&sender_uid) {
+            let udb = user_db.get_mut(&sender_uid).unwrap();
+            if udb.messages.contains_key(&chatid) {
+                let messages = udb.messages.get_mut(&chatid).unwrap();
+                if messages.contains_key(&messageid) {
+                    let message = messages.get_mut(&messageid).unwrap();
+                    message.read = "Read".into();
+                }
+            }
+        }
     }
 }
 
@@ -791,8 +813,20 @@ fn react_message(
         let chats = server.chats.lock().unwrap();
         let chat = chats.get(&chatid).unwrap();
         if chat.users.contains(&user) {
-            let reaction = reaction(emoji, user.username, messageid, chatid);
+            let reaction = reaction(emoji.clone(), user.username.clone(), messageid, chatid);
             send_sendable(reaction, &chat.users, &server);
+            for to_user in &chat.users {
+                let mut user_db = server.user_db.lock().unwrap();
+                if user_db.contains_key(&to_user) {
+                    let udb = user_db.get_mut(&to_user).unwrap();
+                    if udb.messages.contains_key(&chat.id) {
+                        let messages = udb.messages.get_mut(&chat.id).unwrap();
+                        if messages.contains_key(&messageid) {
+                            messages.get_mut(&messageid).unwrap().reactions.insert(user.username.clone(), emoji.clone());
+                        }
+                    }
+                }
+            }
         }
     }
     "Thank you :)".to_string()
@@ -928,7 +962,7 @@ async fn main() {
         .manage(server.clone())
         .mount(
             "/",
-            FileServer::from("C:\\Users\\chris\\rust\\messenger\\messenger-client\\build"),
+            FileServer::from("messenger-client\\build"),
         )
         .mount(
             "/",
