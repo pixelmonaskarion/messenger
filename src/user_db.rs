@@ -2,7 +2,7 @@ use std::{collections::HashMap, sync::{Mutex, Arc}};
 
 use rocket::{State, http::ContentType};
 use serde::{Deserialize, Serialize};
-use crate::{Server, message::Message, sendables::Sendable};
+use crate::{Server, message::Message, sendables::{Sendable, SendableType}};
 
 #[derive(Deserialize, Serialize, Clone)]
 pub struct UserDB {
@@ -64,7 +64,10 @@ impl<T: TimeStamped> DBMap<T> {
 
 impl<T: TimeStamped> TimeStamped for DBMap<T> {
     fn get_timestamp(&self) -> u128 {
-        return self.map.get(&self.timestamp_sorted[0]).unwrap().get_timestamp();
+        if self.timestamp_sorted.len() > 0 {
+            return self.map.get(&self.timestamp_sorted[0]).unwrap().get_timestamp();
+        }
+        return 0;
     }
 }
 
@@ -129,13 +132,13 @@ pub fn get_message(token: u32, chat: u32, message: u32, server_arc: &State<Arc<M
                 };
                 return (ContentType::JSON, serialized);
             } else {
-                return (ContentType::JSON, "{'server':'no message found'}".into());
+                return (ContentType::JSON, "{\"server\":\"no message found\"}".into());
             }
         } else {
-            return (ContentType::JSON, "{'server':'no chat found'}".into());
+            return (ContentType::JSON, "{\"server\":\"no chat found\"}".into());
         }
     } else {
-        return (ContentType::JSON, "{'server':'invalid token'}".into());
+        return (ContentType::JSON, "{\"server\":\"invalid token\"}".into());
     }
 }
 
@@ -149,29 +152,60 @@ pub fn get_chat_messages(token: u32, chat: u32, number: Option<usize>, after: Op
         let udb = user_db.get(uid).unwrap();
         if udb.messages.contains_key(&chat) {
             let mut data = "[".to_string();
-            for (i, (mid, entry)) in udb.messages.get(&chat).unwrap().map.iter().enumerate() {
+            let mut any_data = false;
+            for (i, (_mid, entry)) in udb.messages.get(&chat).unwrap().map.iter().enumerate() {
                 if number.is_some() {
                     if i+1 >= number.unwrap() {
                         break;
                     }
                 }
                 if after.is_some() {
-                    if entry.get_timestamp() < after.unwrap() {
+                    if entry.get_timestamp() <= after.unwrap() {
                         break;
                     }
                 }
                 let serialized = match entry.entry_type {
-                    DBEntryType::Message => serde_json::ser::to_string(entry.message.as_ref().unwrap()).expect("couldn't serialize message"),
-                    DBEntryType::Sendable => serde_json::ser::to_string(entry.sendable.as_ref().unwrap()).expect("couldn't serialize message"),
+                    DBEntryType::Message => Sendable::new(SendableType::Message, serde_json::ser::to_string(&entry.message.as_ref().unwrap()).expect("couldn't serialize message"), None).to_string(),
+                    DBEntryType::Sendable => entry.sendable.as_ref().unwrap().to_string(),
                 };
-                data = format!("{}{}: '{}',", data, mid, serialized);
+                data = format!("{}{},", data, serialized);
+                any_data = true;
+            }
+            if any_data {
+                data.pop();
             }
             data += "]";
+            println!("{data}");
             return (ContentType::JSON, data);
         } else {
-            return (ContentType::JSON, "{'server':'no chat found'}".into());
+            return (ContentType::JSON, "{\"server\":\"no chat found\"}".into());
         }
     } else {
-        return (ContentType::JSON, "{'server':'invalid token'}".into());
+        return (ContentType::JSON, "{\"server\":\"invalid token\"}".into());
+    }
+}
+
+#[get("/db/chats/<token>")]
+pub fn get_chats(token: u32, server_arc: &State<Arc<Mutex<Server>>>) -> (ContentType, String) {
+    let server = server_arc.lock().unwrap();
+    if server.tokens.lock().unwrap().contains_key(&token) {
+        let tokens = server.tokens.lock().unwrap();
+        let user_db = server.user_db.lock().unwrap();
+        let uid = tokens.get(&token).unwrap();
+        let udb = user_db.get(uid).unwrap();
+        let mut data = "[".to_string();
+        let mut any_data = false;
+        for chatid in udb.messages.map.keys() {
+            data = format!("{}{},", data, chatid);
+            any_data = true;
+        }
+        if any_data {
+            data.pop();
+        }
+        data += "]";
+        println!("{data}");
+        return (ContentType::JSON, data);
+    } else {
+        return (ContentType::JSON, "{\"server\":\"invalid token\"}".into());
     }
 }

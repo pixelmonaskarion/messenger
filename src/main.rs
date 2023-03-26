@@ -999,6 +999,7 @@ async fn main() {
                 login,
                 get_message,
                 get_chat_messages,
+                get_chats,
             ],
         )
         .launch()
