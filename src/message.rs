@@ -28,11 +28,18 @@ pub struct EncryptedMessages {
     pub encrypted_messages: HashMap<String, SendMessage>,
 }
 
+#[derive(Deserialize)]
+pub struct EncryptedMessages {
+    pub encrypted_messages: HashMap<String, SendMessage>,
+}
+
 impl SendMessage {
+    pub fn to_message(&self, id: u32, from_user: UserIdentifier ) -> Message {
     pub fn to_message(&self, id: u32, from_user: UserIdentifier ) -> Message {
         Message {
             id,
             text: self.text.clone(),
+            from_user,
             from_user,
             chat: self.chat,
             timestamp: self.timestamp,
