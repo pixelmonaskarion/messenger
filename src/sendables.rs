@@ -52,13 +52,13 @@ impl SendableType {
     }
 }
 
-pub fn banner(text: String, chat: u32) -> Sendable {
+pub fn banner(text: String, chat: u32, id: u32) -> Sendable {
     let start = SystemTime::now();
     let since_the_epoch = start
         .duration_since(UNIX_EPOCH)
         .expect("Time went backwards");
     let timestamp = since_the_epoch.as_millis();
-    let sendable = Sendable::new(SendableType::Banner, format!("{{\"text\":\"{}\", \"chat\": {}}}", text, chat), Some(timestamp));
+    let sendable = Sendable::new(SendableType::Banner, format!("{{\"text\":\"{}\", \"chat\": {}, 'id': {}}}", text, chat, id), Some(timestamp));
     sendable
 }
 pub fn read(status: String, username: String, messageid: u32, chatid: u32) -> Sendable {

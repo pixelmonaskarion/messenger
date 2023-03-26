@@ -38,8 +38,8 @@ pub struct Server {
     tokens: Mutex<HashMap<u32, UserIdentifier>>,
     chats: Mutex<HashMap<u32, Chat>>,
     passwords: Mutex<HashMap<UserIdentifier, String>>,
-    message_queue: Mutex<HashMap<UserIdentifier, HashMap<u32, Sendable>>>,
-    sendable_queue: Mutex<HashMap<UserIdentifier, Vec<Sendable>>>,
+    // message_queue: Mutex<HashMap<UserIdentifier, HashMap<u32, Sendable>>>,
+    // sendable_queue: Mutex<HashMap<UserIdentifier, Vec<Sendable>>>,
     chat_join_ids: Mutex<HashMap<u32, u32>>,
     connect_device_senders: Mutex<HashMap<u32, Sender<String>>>,
     user_db: Mutex<HashMap<UserIdentifier, UserDB>>,
@@ -53,8 +53,8 @@ impl Server {
             tokens: Mutex::new(HashMap::new()),
             chats: Mutex::new(HashMap::new()),
             passwords: Mutex::new(HashMap::new()),
-            message_queue: Mutex::new(HashMap::new()),
-            sendable_queue: Mutex::new(HashMap::new()),
+            // message_queue: Mutex::new(HashMap::new()),
+            // sendable_queue: Mutex::new(HashMap::new()),
             chat_join_ids: Mutex::new(HashMap::new()),
             connect_device_senders: Mutex::new(HashMap::new()),
             user_db: Mutex::new(HashMap::new()),
@@ -74,22 +74,22 @@ impl Server {
                 )
                 .expect("couldn't parse users"),
             ));
-            let message_queue = Mutex::new(user::username_map_into(
-                serde_json::from_str(
-                    fs::read_to_string("save/message_queue.json")
-                        .expect("Should have been able to read the file")
-                        .as_str(),
-                )
-                .expect("couldn't parse message queue"),
-            ));
-            let sendable_queue = Mutex::new(user::username_map_into(
-                serde_json::from_str(
-                    fs::read_to_string("save/sendable_queue.json")
-                        .expect("Should have been able to read the file")
-                        .as_str(),
-                )
-                .expect("couldn't parse sendable queue"),
-            ));
+            // let message_queue = Mutex::new(user::username_map_into(
+            //     serde_json::from_str(
+            //         fs::read_to_string("save/message_queue.json")
+            //             .expect("Should have been able to read the file")
+            //             .as_str(),
+            //     )
+            //     .expect("couldn't parse message queue"),
+            // ));
+            // let sendable_queue = Mutex::new(user::username_map_into(
+            //     serde_json::from_str(
+            //         fs::read_to_string("save/sendable_queue.json")
+            //             .expect("Should have been able to read the file")
+            //             .as_str(),
+            //     )
+            //     .expect("couldn't parse sendable queue"),
+            // ));
             let tokens = Mutex::new(
                 serde_json::from_str(
                     fs::read_to_string("save/tokens.json")
@@ -136,8 +136,8 @@ impl Server {
                 tokens,
                 chats,
                 passwords,
-                message_queue,
-                sendable_queue,
+                // message_queue,
+                // sendable_queue,
                 chat_join_ids,
                 connect_device_senders: Mutex::new(HashMap::new()),
                 user_db,
@@ -154,7 +154,7 @@ async fn events(token: u32, server_arc: &State<Arc<Mutex<Server>>>) -> TextStrea
     let tokens = server.tokens.lock().unwrap().clone();
     let uid = tokens.get(&token);
     let mut invalid_token = false;
-    let mut messages = Vec::new();
+    // let mut messages = Vec::new();
     if uid.is_none() {
         invalid_token = true;
     } else {
@@ -166,57 +166,26 @@ async fn events(token: u32, server_arc: &State<Arc<Mutex<Server>>>) -> TextStrea
         }
         senders.push(sender);
         event_stream_senders.insert(uid.unwrap().clone(), senders);
-        if server
-            .message_queue
-            .lock()
-            .unwrap()
-            .contains_key(uid.unwrap())
-        {
-            for message in server
-                .message_queue
-                .lock()
-                .unwrap()
-                .get(uid.unwrap())
-                .unwrap()
-                .values()
-            {
-                messages.push(message.clone());
-            }
-        }
-        if server
-            .sendable_queue
-            .lock()
-            .unwrap()
-            .contains_key(uid.unwrap())
-        {
-            for message in server
-                .sendable_queue
-                .lock()
-                .unwrap()
-                .get(uid.unwrap())
-                .unwrap()
-            {
-                messages.push(message.clone());
-            }
-        }
-        server
-            .message_queue
-            .lock()
-            .unwrap()
-            .insert(uid.unwrap().clone(), HashMap::new());
-        server
-            .sendable_queue
-            .lock()
-            .unwrap()
-            .insert(uid.unwrap().clone(), Vec::new());
+        // if server.message_queue.lock().unwrap().contains_key(uid.unwrap()) {
+        //     for message in server.message_queue.lock().unwrap().get(uid.unwrap()).unwrap().values() {
+        //         messages.push(message.clone());
+        //     }
+        // }
+        // if server.sendable_queue.lock().unwrap().contains_key(uid.unwrap()) {
+        //     for message in server.sendable_queue.lock().unwrap().get(uid.unwrap()).unwrap() {
+        //         messages.push(message.clone());
+        //     }
+        // }
+        // server.message_queue.lock().unwrap().insert(uid.unwrap().clone(), HashMap::new());
+        // server.sendable_queue.lock().unwrap().insert(uid.unwrap().clone(), Vec::new());
     }
     return TextStream! {
         if invalid_token {
             yield "{\"server_reponse\":\"invalid token\"}|endmessage|".to_string();
         } else {
-            for message in messages {
-                yield format!("{}|endmessage|", message.to_string());
-            }
+            // for message in messages {
+            //     yield format!("{}|endmessage|", message.to_string());
+            // }
             let mut interval = time::interval(Duration::from_secs(1));
             let mut seconds = 31;
             loop {
@@ -322,22 +291,22 @@ fn create_account(
             username: username.clone(),
         },
     );
-    if server
-        .message_queue
-        .lock()
-        .unwrap()
-        .get(&UserIdentifier {
-            username: username.clone(),
-        })
-        .is_none()
-    {
-        server.message_queue.lock().unwrap().insert(
-            UserIdentifier {
-                username: username.clone(),
-            },
-            HashMap::new(),
-        );
-    }
+    // if server
+    //     .message_queue
+    //     .lock()
+    //     .unwrap()
+    //     .get(&UserIdentifier {
+    //         username: username.clone(),
+    //     })
+    //     .is_none()
+    // {
+    //     server.message_queue.lock().unwrap().insert(
+    //         UserIdentifier {
+    //             username: username.clone(),
+    //         },
+    //         HashMap::new(),
+    //     );
+    // }
     server.user_db.lock().unwrap().insert(UserIdentifier {username: username.clone(),}, UserDB::new());
     let mut pfp = "undefined".to_string();
 
@@ -427,8 +396,21 @@ fn edit_chat(
                         .unwrap_or(&UserProfile::dummy(new_user.username))
                         .name
                         .clone();
-                    let sendable = banner(format!("{} joined this chat", name), chat.id);
-                    send_sendable(sendable, &chat.users, &server);
+                    let mut rng = rand::thread_rng();
+                    let banner_id = rng.gen::<u32>();
+                    let sendable = banner(format!("{} joined this chat", name), chat.id, banner_id.clone());
+                    send_sendable(sendable.clone(), &chat.users, &server);
+                    for user in &chat.users {
+                        let mut user_db = server.user_db.lock().unwrap();
+                        if user_db.contains_key(user) {
+                            let udb = user_db.get_mut(user).unwrap();
+                            if udb.messages.contains_key(&chat.id) {
+                                let mut messages = udb.messages.get(&chat.id).unwrap().clone();
+                                messages.insert(banner_id, DBEntry::sendable(sendable.clone()));
+                                udb.messages.update(chat.id, messages);
+                            }
+                        }
+                    }
                 }
                 println!("updated chat name: {} admin: {:?}", chat.name, chat.admin);
             } else {
@@ -594,17 +576,31 @@ fn join_chat_link(join_code: u32, token: u32, server_arc: &State<Arc<Mutex<Serve
                         .unwrap_or(&UserProfile::dummy(uid.username.clone()))
                         .name
                         .clone();
-                    let sendable = banner(format!("{} joined this chat", name), chatid);
+                    let mut rng = rand::thread_rng();
+                    let banner_id = rng.gen::<u32>();
+                    let sendable = banner(format!("{} joined this chat", name), chatid, banner_id.clone());
                     println!(
                         "user {} joining chat {}",
                         uid.username,
                         server.chats.lock().unwrap().get_mut(&chatid).unwrap().name
                     );
                     send_sendable(
-                        sendable,
+                        sendable.clone(),
                         &server.chats.lock().unwrap().get_mut(&chatid).unwrap().users,
                         &server,
                     );
+                    let chat_users = server.chats.lock().unwrap().get_mut(&chatid).unwrap().users.clone();
+                    for user in &chat_users {
+                        let mut user_db = server.user_db.lock().unwrap();
+                        if user_db.contains_key(user) {
+                            let udb = user_db.get_mut(user).unwrap();
+                            if udb.messages.contains_key(&chatid) {
+                                let mut messages = udb.messages.get(&chatid).unwrap().clone();
+                                messages.insert(banner_id, DBEntry::sendable(sendable.clone()));
+                                udb.messages.update(chatid, messages);
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -623,13 +619,13 @@ fn received_message(
     let tokens = server.tokens.lock().unwrap();
     let uid = tokens.get(&token);
     if uid.is_some() {
-        server
-            .message_queue
-            .lock()
-            .unwrap()
-            .get_mut(uid.unwrap())
-            .unwrap()
-            .remove(&messageid);
+        // server
+        //     .message_queue
+        //     .lock()
+        //     .unwrap()
+        //     .get_mut(uid.unwrap())
+        //     .unwrap()
+        //     .remove(&messageid);
         let sender_uid = UserIdentifier { username: to_user };
         let sendable = read(
             "Delivered".to_string(),
@@ -642,11 +638,15 @@ fn received_message(
         if user_db.contains_key(&sender_uid) {
             let udb = user_db.get_mut(&sender_uid).unwrap();
             if udb.messages.contains_key(&chatid) {
-                let messages = udb.messages.get_mut(&chatid).unwrap();
+                let mut messages = udb.messages.get(&chatid).unwrap().clone();
                 if messages.contains_key(&messageid) {
-                    let message = messages.get_mut(&messageid).unwrap();
-                    message.read = "Delivered".into();
+                    let entry = messages.map.get_mut(&messageid).unwrap();
+                    if entry.entry_type == DBEntryType::Message {
+                        entry.message.as_mut().unwrap().read = "Delivered".into();
+                    }
                 }
+                udb.messages.update(chatid, messages);
+
             }
         }
     }
@@ -748,11 +748,14 @@ fn read_message(
         if user_db.contains_key(&sender_uid) {
             let udb = user_db.get_mut(&sender_uid).unwrap();
             if udb.messages.contains_key(&chatid) {
-                let messages = udb.messages.get_mut(&chatid).unwrap();
+                let mut messages = udb.messages.get(&chatid).unwrap().clone();
                 if messages.contains_key(&messageid) {
-                    let message = messages.get_mut(&messageid).unwrap();
-                    message.read = "Read".into();
+                    let entry = messages.map.get_mut(&messageid).unwrap();
+                    if entry.entry_type == DBEntryType::Message {
+                        entry.message.as_mut().unwrap().read = "Read".into();
+                    }
                 }
+                udb.messages.update(chatid, messages);
             }
         }
     }
@@ -820,10 +823,14 @@ fn react_message(
                 if user_db.contains_key(&to_user) {
                     let udb = user_db.get_mut(&to_user).unwrap();
                     if udb.messages.contains_key(&chat.id) {
-                        let messages = udb.messages.get_mut(&chat.id).unwrap();
+                        let mut messages = udb.messages.get(&chat.id).unwrap().clone();
                         if messages.contains_key(&messageid) {
-                            messages.get_mut(&messageid).unwrap().reactions.insert(user.username.clone(), emoji.clone());
+                            let entry = messages.map.get_mut(&messageid).unwrap();
+                            if entry.entry_type == DBEntryType::Message {
+                                entry.message.as_mut().unwrap().reactions.insert(user.username.clone(), emoji.clone());
+                            }
                         }
+                        udb.messages.update(chat.id, messages);
                     }
                 }
             }
@@ -864,22 +871,22 @@ fn write_to_file(server_arc: Arc<Mutex<Server>>) -> std::io::Result<()> {
             .expect("could not write to users file")
             .as_bytes(),
     )?;
-    let mut message_queue_file = create_or_open_file("save/message_queue.json")?;
-    message_queue_file.write_all(
-        serde_json::to_string(&user::uid_map_into(
-            server.message_queue.lock().unwrap().clone(),
-        ))
-        .expect("could not write to message queue file")
-        .as_bytes(),
-    )?;
-    let mut sendable_queue_file = create_or_open_file("save/sendable_queue.json")?;
-    sendable_queue_file.write_all(
-        serde_json::to_string(&user::uid_map_into(
-            server.sendable_queue.lock().unwrap().clone(),
-        ))
-        .expect("could not write to sendable queue file")
-        .as_bytes(),
-    )?;
+    // let mut message_queue_file = create_or_open_file("save/message_queue.json")?;
+    // message_queue_file.write_all(
+    //     serde_json::to_string(&user::uid_map_into(
+    //         server.message_queue.lock().unwrap().clone(),
+    //     ))
+    //     .expect("could not write to message queue file")
+    //     .as_bytes(),
+    // )?;
+    // let mut sendable_queue_file = create_or_open_file("save/sendable_queue.json")?;
+    // sendable_queue_file.write_all(
+    //     serde_json::to_string(&user::uid_map_into(
+    //         server.sendable_queue.lock().unwrap().clone(),
+    //     ))
+    //     .expect("could not write to sendable queue file")
+    //     .as_bytes(),
+    // )?;
     let mut tokens_file = create_or_open_file("save/tokens.json")?;
     tokens_file.write_all(
         serde_json::to_string(server.tokens.lock().unwrap().deref_mut())
