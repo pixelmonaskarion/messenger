@@ -26,6 +26,7 @@ mod message;
 mod sendables;
 mod user;
 mod user_db;
+mod warp_server;
 use actions::*;
 use message::*;
 use sendables::*;
@@ -964,6 +965,10 @@ fn all_options() {
 #[rocket::main]
 async fn main() {
     let server = Arc::new(Mutex::new(Server::from_file()));
+    let arc_copy = server.clone();
+    rocket::tokio::spawn(async move {
+        warp_server::warp_start(arc_copy).await;
+    });
     let result = rocket::build()
         .attach(CORS)
         .manage(server.clone())

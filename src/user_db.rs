@@ -41,12 +41,17 @@ impl<T: TimeStamped> DBMap<T> {
 
     pub fn insert(&mut self, key: u32, entry: T) {
         let timestamp = entry.get_timestamp();
+        let mut set = false;
         for i in 0..self.timestamp_sorted.len() {
             let other_ts = self.map.get(&self.timestamp_sorted[i]).unwrap().get_timestamp();
             if timestamp >= other_ts {
                 self.timestamp_sorted.insert(i, key);
+                set = true;
                 break;
             }
+        }
+        if !set {
+            self.timestamp_sorted.push(key);
         }
         self.map.insert(key, entry);
     }
@@ -153,7 +158,8 @@ pub fn get_chat_messages(token: u32, chat: u32, number: Option<usize>, after: Op
         if udb.messages.contains_key(&chat) {
             let mut data = "[".to_string();
             let mut any_data = false;
-            for (i, (_mid, entry)) in udb.messages.get(&chat).unwrap().map.iter().enumerate() {
+            for (i, mid) in udb.messages.get(&chat).unwrap().timestamp_sorted.iter().enumerate() {
+                let entry = udb.messages.get(&chat).unwrap().map.get(&mid).unwrap();
                 if number.is_some() {
                     if i+1 >= number.unwrap() {
                         break;
