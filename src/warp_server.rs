@@ -61,7 +61,7 @@ pub async fn websocket(wb: Ws, token: u32, server_arc: Arc<Mutex<Server>>) -> Re
                 if seconds >= 30 {
                     match websocket.start_send_unpin(Message::text(format!("{{\"server\":\"ping\"}}"))) {
                         Ok(_) => {},
-                        Err(e) => {println!("failed to send message{e}");}
+                        Err(e) => {println!("failed to send message{e}"); break;}
                     };
                     seconds = 0;
                 }
@@ -69,7 +69,7 @@ pub async fn websocket(wb: Ws, token: u32, server_arc: Arc<Mutex<Server>>) -> Re
                 if message_option.is_ok() {
                     match websocket.start_send_unpin(Message::text(format!("{}", message_option.unwrap().to_string()))) {
                         Ok(_) => {},
-                        Err(e) => {println!("failed to send message{e}");}
+                        Err(e) => {println!("failed to send message{e}"); break;}
                     };
                 }
                 interval.tick().await;

@@ -13,6 +13,7 @@ use rocket::tokio::time::{self, Duration};
 use rocket::State;
 use rocket::{get, routes};
 use rocket::{Request, Response};
+use serde::Deserialize;
 use std::collections::HashMap;
 use std::fs::{self, create_dir, File, OpenOptions};
 use std::io::{Read, Write};
@@ -292,22 +293,6 @@ fn create_account(
             username: username.clone(),
         },
     );
-    // if server
-    //     .message_queue
-    //     .lock()
-    //     .unwrap()
-    //     .get(&UserIdentifier {
-    //         username: username.clone(),
-    //     })
-    //     .is_none()
-    // {
-    //     server.message_queue.lock().unwrap().insert(
-    //         UserIdentifier {
-    //             username: username.clone(),
-    //         },
-    //         HashMap::new(),
-    //     );
-    // }
     server.user_db.lock().unwrap().insert(UserIdentifier {username: username.clone(),}, UserDB::new());
     let mut pfp = "undefined".to_string();
 
@@ -334,6 +319,30 @@ fn create_account(
         user_profile,
     );
     return (ContentType::JSON, format!("{{\"token\":{}}}", token));
+}
+
+#[derive(Deserialize)]
+pub struct EditUser {
+    pub display_name: Option<String>,
+    pub color: Option<String>,
+}
+#[post("/edit-profile/<token>", data = "<edit_user>")]
+fn edit_profile(token: u32, edit_user: Json<EditUser>, server_arc: &State<Arc<Mutex<Server>>>) {
+    let server = server_arc.lock().unwrap();
+    if server.tokens.lock().unwrap().contains_key(&token) {
+        let tokens = server.tokens.lock().unwrap();
+        let mut users = server.users.lock().unwrap();
+        let uid = tokens.get(&token).unwrap();
+        let profile_option = users.get(&uid);
+        let mut user_profile = profile_option.unwrap().clone();
+        if edit_user.display_name.is_some() {
+            user_profile.name = edit_user.display_name.as_ref().unwrap().clone();
+        }
+        if edit_user.color.is_some() {
+            user_profile.color = edit_user.color.as_ref().unwrap().clone();
+        }
+        users.insert(uid.clone(), user_profile);
+    }
 }
 
 #[get("/login/<username>/<password>")]
@@ -935,7 +944,7 @@ fn create_or_open_file(path: &str) -> Result<std::fs::File, std::io::Error> {
 fn join_headers(joinchat: u32, server_arc: &State<Arc<Mutex<Server>>>) -> (ContentType, String) {
     let server = server_arc.lock().unwrap();
     println!("join chat {joinchat}");
-    let mut file = File::open("F:\\chris\\rust\\messenger\\messenger-client\\build\\index.html")
+    let mut file = File::open("..\\messenger-client\\build\\index.html")
         .expect("index.html does not exist!!!");
     let mut file_text = String::new();
     file.read_to_string(&mut file_text)
@@ -974,7 +983,7 @@ async fn main() {
         .manage(server.clone())
         .mount(
             "/",
-            FileServer::from("messenger-client\\build"),
+            FileServer::from("..\\messenger-client\\build"),
         )
         .mount(
             "/",
@@ -1005,6 +1014,7 @@ async fn main() {
                 get_message,
                 get_chat_messages,
                 get_chats,
+                edit_profile,
             ],
         )
         .launch()

@@ -30,7 +30,7 @@ pub fn username_map_into<T>(input_map: HashMap<String, T>) -> HashMap<UserIdenti
     return output_map;
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct UserProfile {
     pub username: String,
     pub name: String,
